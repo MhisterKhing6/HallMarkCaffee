@@ -8,11 +8,10 @@ import sha1 from "sha1"
 import generatePassword from "generate-password"
 import { erroReport } from "../utils/errors.js"
 import { generateToken } from "../utils/WebTokenController.js"
-//import { TwoHourPass, generateSecretNumber } from "../utils/VerificationFunctions.js"
 
 class UserController  {
 
-    static register = async (req, res) => {
+    static registerUser = async (req, res) => {
         /**
          * register: register user to the system
          * @param {object} req: request object
@@ -23,6 +22,9 @@ class UserController  {
         //check if all required user details are given
         if(!(userDetails.email && userDetails.name && userDetails.role))
             return erroReport(res, 400, "allFields")
+        //check if is correct role
+        if(!(["customer", "delivery"].includes(userDetails.role)))
+            return erroReport(res, 400, false, "wrong user role, accepted roles [customer,delivery]")
         //check if the user is already register
         let alreadyUser = await UserModel.findOne({email: userDetails.email})
         if(alreadyUser)
@@ -36,7 +38,7 @@ class UserController  {
             //check if password is sent
             await userDb.save()
             //asynchroneously send verificatio message
-            res.status(201).json({...userDb})
+            res.status(201).json({id: userDb._id})
         } catch(err) {
             console.log(err)
             return res.status(501).json({"message": "internal error"})

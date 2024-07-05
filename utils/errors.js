@@ -10,7 +10,8 @@ const errorsMessage = {
     "internalE": {"message": "internal error contanct admin"},
     "wrongPassword": {"message": "wrong password"},
     "expiredSess": {"message": "session expired"},
-    }
+    "catNotFound": {"message": "category entry not found"}
+}
 
 const erroReport = (res, status, key=null, message=null) => {
     let body = key ? errorsMessage[key] : message

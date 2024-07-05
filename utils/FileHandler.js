@@ -6,7 +6,7 @@ const readFileAsync = promisify(readFile)
 const writeFileAsyc = promisify(writeFile)
 const mkdirAsync = promisify(mkdir)
 
-const createFilePath = async (adminId,fileName) => {
+const createFilePath = async (foodName) => {
     /**
      * createDirectory: create a directory for a file
      * @param {string}:use to uniquly manage files folder structure
@@ -15,7 +15,7 @@ const createFilePath = async (adminId,fileName) => {
     //get absolute path of current directory calling the function
     let abs = path.resolve(".")
     //join paths to get parent directory of files
-    let parentDirectory = path.join(abs, "Files", adminId)
+    let parentDirectory = path.join(abs, "static", foodName)
     //create folder on a disk
     try {
         let response = await mkdirAsync(parentDirectory, {recursive:true})
@@ -49,7 +49,7 @@ const getFileNameFromTitle = (title, fileName) => {
 }
 
 
-const saveUpolaodFileDisk = async (adminId,fileName, base64Data) => {
+const saveUpolaodFileDisk = async (fileName, base64Data) => {
     /**
      * writeFile : saves buffer data to file
      * @param {string} fileName: file name of the file
@@ -59,7 +59,7 @@ const saveUpolaodFileDisk = async (adminId,fileName, base64Data) => {
      */
     //create file path
     try {
-    let filePath  = await createFilePath(adminId, fileName)
+    let filePath  = await createFilePath(fileName)
     if(!filePath)
         return null
     //check if file with the same file name exist
