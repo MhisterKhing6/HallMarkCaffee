@@ -66,4 +66,11 @@ adminRoute.put("/food", AdminController.editFood)
  */
 adminRoute.delete("/food/:id", AdminController.deleteFood)
 
+/**
+ * enable food for the week or day
+ * method: post
+ * domain: restricted to administrators
+ */
+adminRoute.post("/enable/food", AdminController.enableFood)
+
 export {adminRoute}

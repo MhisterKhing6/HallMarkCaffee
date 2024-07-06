@@ -3,6 +3,7 @@ import { FoodSizesModel } from "../models/foodSizes.js"
 import { FoodCatModel } from "../models/foodCategories.js"
 import { FoodModel } from "../models/food.js"
 import { Types} from "mongoose"
+import { addDays } from "../utils/datesHandler.js"
 
 /** Handle admin funtions*/
 class AdminController {
@@ -172,7 +173,7 @@ class AdminController {
                 })
                 let category = await FoodCatModel.findById(food.categoryId).select("name -_id")
                 //sanitize the results
-                output.push({sizes, category:category.name, id:food._id,description:food.description, url:food.url, name:food.name})
+                output.push({allowedEndDate:food.allowedEndDate,sizes, category:category.name, id:food._id,description:food.description, url:food.url, name:food.name})
             }
             return res.status(200).json(output)
     }
@@ -181,6 +182,45 @@ class AdminController {
         return erroReport(res, 501, false, "internalE")
         }
     }
+
+
+/**
+ * enable food for the week or day
+ * @param {Object} req 
+ * @param {Object} res 
+ */
+    static enableFood = async (req, res) => {
+        let foods = req.body // [{id, duration:a | w}]
+        let notFoundFood = []
+        try {
+        for(const food of foods) {
+            if(!food.id)
+                return erroReport(res, 401, false, "wrong format food should contain id")
+            let foodDb = await FoodModel.findById(food.id)
+            if(!foodDb)
+                notFoundFood.push(food)
+            else {
+                let addedDate = null
+                if(food.duration !== "a")
+                    addedDate = addDays(7)
+                else
+                    addedDate = addDays(1)
+                foodDb.allowedEndDate = addedDate
+                await foodDb.save()
+            }
+        }
+        let message = "success"
+        let status = 200
+        if(notFoundFood.length !== 0) {
+            message = `couldnt find these foods ${allowedEndDate}`
+            status = 400
+        }
+        res.status(status).json({message})
+    } catch(error) {
+        console.log(error)
+        return erroReport(res, 501, "internalE")
+    }
+}
 
 }
 export {AdminController}
