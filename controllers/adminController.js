@@ -1,8 +1,7 @@
-import { erroReport } from "../utils/errors.js"
-import { FoodCatModel } from "../models/foodCategories.js"
 import { FoodModel } from "../models/food.js"
-import { Types} from "mongoose"
+import { FoodCatModel } from "../models/foodCategories.js"
 import { addDays } from "../utils/datesHandler.js"
+import { erroReport } from "../utils/errors.js"
 
 /** Handle admin funtions*/
 class AdminController {
@@ -69,6 +68,11 @@ class AdminController {
             if(!food)
                 if(!(foodDetails.size && foodDetails.price && foodDetails.url && foodDetails.description)) 
                     return erroReport(res, 400, "allFields")
+            //ensure if food is special day is given
+            if(foodDetails.special && !foodDetails.day)
+                return erroReport(res, 400, false, "wrong format. if food is special but day is null")
+
+
             //check if the save food size and price is already saved
             if((food.size === foodDetails.size) && (food.price === foodDetails.price))
                 return erroReport(res, 400, false, "food with the save entry already saved")
@@ -204,4 +208,4 @@ class AdminController {
 }
 
 }
-export {AdminController}
+export { AdminController }
