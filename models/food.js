@@ -6,7 +6,7 @@ const FoodSchema = new Schema({
     allowedEndDate: {type:Date},
     url: {type:String, required:true},
     size:{type:String, required:true},
-    price:{type:Types.Decimal128, required:true},
+    price:{type:Number, required:true},
     special:{type:Boolean,default:false},
     day:{type:String}
 })

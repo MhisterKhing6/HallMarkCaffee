@@ -61,24 +61,29 @@ class AdminController {
     static uploadFood = async (req, res) => {
         try {
             let foodDetails = req.body //{category:categoryId,description:description name ,url:urlOfPic, name:nana,sizes:[{name:larg, price:300},{name:medium, price:200}]}
-            //check if all food fields are given
-            if(!(foodDetails.size && foodDetails.price && foodDetails.url && foodDetails.name && foodDetails.description)) 
-                return erroReport(res, 400, "allFields")
-            //check if food with the same name and size exist
-            let food = await FoodModel.findOne({name:foodDetails.name}).select("-_id, -_v")
-            
-            if(food && (food.size === foodDetails.size))
-                return erroReport(res, 400, false, "food with the same name and size exist")
-            //check if id is correct
+            let food = null
+            //logic for already uploaded foods
+            if(foodDetails.name && foodDetails.size)
+                food = await FoodModel.findOne({name:foodDetails.name, size:foodDetails.size}, {_id:0}).lean().select("-_id, -__v")
+            //if no found is already uploaded ensure all fields are given
+            if(!food)
+                if(!(foodDetails.size && foodDetails.price && foodDetails.url && foodDetails.description)) 
+                    return erroReport(res, 400, "allFields")
+            //check if the save food size and price is already saved
+            if((food.size === foodDetails.size) && (food.price === foodDetails.price))
+                return erroReport(res, 400, false, "food with the save entry already saved")
+            //form food model
             let foodDb = null
+            //food is already uploaded, create a new food model by using the uploaded food details
+            //and replace just replace the details that is given
             if(food)
-                food = new FoodModel({...foodDetails, ...food})
+                foodDb = new FoodModel({...food, ...foodDetails})
             else
                 foodDb = new FoodModel(foodDetails)
-            await foodDb.save()         
-            //save food sizes
-        
-            return res.status(200).json({"message": "success"})
+            //save the food
+            await foodDb.save()
+
+            return res.status(200).json({"message": "food saved"})
             } catch(errror) {
                 console.log(errror)
                 return erroReport(res, 501, "internalE")
@@ -149,7 +154,7 @@ class AdminController {
     static viewFoods = async (req, res) => {
         try {
             //get all object
-            let response = await FoodModel.find().select("-_v, -_id")
+            let response = await FoodModel.find().select("-__v, _id").lean()
 
             return res.status(200).json(response)
     }
