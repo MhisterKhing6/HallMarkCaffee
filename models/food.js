@@ -2,10 +2,13 @@ import {model, Schema, Types } from "mongoose";
 const FoodSchema = new Schema({
     name:{type: String, required:true},
     description:{type:String, required:true},
-    categoryId: {type:Types.ObjectId, required: true},
     allowedStartDate: {type:Date},
     allowedEndDate: {type:Date},
-    url: {type:String, required:true}
+    url: {type:String, required:true},
+    size:{type:String, required:true},
+    price:{type:Types.Decimal128, required:true},
+    special:{type:Boolean,default:false},
+    day:{type:String}
 })
 
 //create a model

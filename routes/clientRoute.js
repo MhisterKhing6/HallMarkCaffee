@@ -28,7 +28,12 @@ clientRoute.use(async(req, res, next) => {
  */
 clientRoute.post("/address", ClientController.addAddress)
 
+/**
+ * view foods
+ * method: get
+ * domain:client and users
+ */
 
-
+clientRoute.get("/food", AdminController.viewFoods)
 
 export {clientRoute}

@@ -40,6 +40,12 @@ adminRoute.post("/food/category", AdminController.uploadFoodCategory)
  */
 adminRoute.get("/food/category", AdminController.ViewFoodCategory)
 
+/**upload food category to the server
+ * method:post
+ * domain: restricted to admin users
+ */
+adminRoute.post("/check/food/entry", AdminController.checkEntry)
+
 
 
 /**upload food food to the server

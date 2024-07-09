@@ -1,5 +1,4 @@
 import { erroReport } from "../utils/errors.js"
-import { FoodSizesModel } from "../models/foodSizes.js"
 import { FoodCatModel } from "../models/foodCategories.js"
 import { FoodModel } from "../models/food.js"
 import { Types} from "mongoose"
@@ -63,29 +62,36 @@ class AdminController {
         try {
             let foodDetails = req.body //{category:categoryId,description:description name ,url:urlOfPic, name:nana,sizes:[{name:larg, price:300},{name:medium, price:200}]}
             //check if all food fields are given
-            if(!(foodDetails.url && foodDetails.name && foodDetails.sizes && foodDetails.description && foodDetails.category)) 
+            if(!(foodDetails.size && foodDetails.price && foodDetails.url && foodDetails.name && foodDetails.description)) 
                 return erroReport(res, 400, "allFields")
-            //check if food with the same name exists
-            let food = await FoodModel.findOne({name:foodDetails.name})
-            if(food)
-                return erroReport(res, 400, false, "food with the same name alredy exist")
+            //check if food with the same name and size exist
+            let food = await FoodModel.findOne({name:foodDetails.name}).select("-_id, -_v")
+            
+            if(food && (food.size === foodDetails.size))
+                return erroReport(res, 400, false, "food with the same name and size exist")
             //check if id is correct
-            let catDb = await FoodCatModel.findById(foodDetails.category)
-            if(!catDb)
-                return erroReport(res, 400, "catNotFound")
-            let foodDb = new FoodModel({url:foodDetails.url,name:foodDetails.name, categoryId:catDb._id, description:foodDetails.description})              
+            let foodDb = null
+            if(food)
+                food = new FoodModel({...foodDetails, ...food})
+            else
+                foodDb = new FoodModel(foodDetails)
+            await foodDb.save()         
             //save food sizes
-            let foodSizes = []
-            for(const size of foodDetails.sizes){
-                if(!(size.name && size.price && size.price >= 0))
-                    return erroReport(res, 400, false, "wrong size format, size should be object containing name and price, price shouldnt be less than zero")
-                foodSizes.push({foodId: foodDb._id, ...size})
-            }
-            //save food and price
-            let response = await Promise.all([foodDb.save(), FoodSizesModel.insertMany(foodSizes)])
+        
             return res.status(200).json({"message": "success"})
             } catch(errror) {
                 console.log(errror)
+                return erroReport(res, 501, "internalE")
+            }
+    }
+
+    static checkEntry = async (req, res) => {
+        try {
+            let name = req.body.name //{category:categoryId,description:description name ,url:urlOfPic, name:nana,sizes:[{name:larg, price:300},{name:medium, price:200}]}
+            let entry = await FoodModel.findOne({name})
+            return res.status(200).json({found:entry?true:false})
+            } catch(error) {
+                console.log(error)
                 return erroReport(res, 501, "internalE")
             }
     }
@@ -98,7 +104,7 @@ class AdminController {
     static editFood = async (req, res) => {
         try {
             let foodDetails = req.body //{category:categoryId,description:description name ,url:urlOfPic, name:nana,sizes:[{name:larg, price:300},{name:medium, price:200}]}
-            let acceptedKeys = ["sizes", "name", "id", "url", "description", "category"]
+            let acceptedKeys = ["sizes","price","special", "day", "name", "url", "description", "category"]
             //check if all food fields are given
             if(!foodDetails.id)
                 return erroReport(res, 400, false, "id for food is required")
@@ -106,24 +112,7 @@ class AdminController {
             //check for entry and update according
             for(const key of Object.keys(foodDetails)) {
                 if(!acceptedKeys.includes(key))
-                    return erroReport(res, 400, false, `the key ${key} is not accepted as a valid key`)
-                if(key === "sizes")
-                    {
-                        for(const updatedSize of foodDetails[key])
-                            {
-                                if(!(updatedSize.name && updatedSize.price))
-                                    return erroReport(res, 401, false, "wrong size format, size should be object containing name and price, price shouldnt be less than zero")
-                                let foodSize = await FoodSizesModel.findOne({name:updatedSize.name, foodId:food._id})
-                                if(foodSize)
-                                    {   
-                                        foodSize.price = updatedSize.price
-                                        await foodSize.save()
-                                    } else {
-                                        await new FoodSizesModel({foodId:food._id, name:updatedSize.name, price:updatedSize.price}).save()
-
-                                    }
-                            }
-                    }
+                    return erroReport(res, 400, false, `the key ${key} is not accepted as a valid column`)
                 food[key] = foodDetails[key]
             }
             await food.save()
@@ -144,10 +133,6 @@ class AdminController {
         try {
             let foodId = req.params.id
             let food = await FoodModel.findByIdAndDelete(foodId)
-            if(!food)
-                return erroReport(res, 400, false, "cant find food entry with id")
-            //delete all food sizes
-            await FoodSizesModel.deleteMany({foodId:food._id})
             return res.status(200).json({message: "food successfuly deleted"})
             }
             catch(errror) {
@@ -164,18 +149,9 @@ class AdminController {
     static viewFoods = async (req, res) => {
         try {
             //get all object
-            let output = []
-            let response = await FoodModel.find().select("-_v")
-            for(let food of response) {
-                //get food model
-                let sizes = (await FoodSizesModel.find({foodId:food._id}).select("name price -_id")).map((size) => {
-                    return {name:size.name, price:parseFloat(size.price.toString())}
-                })
-                let category = await FoodCatModel.findById(food.categoryId).select("name -_id")
-                //sanitize the results
-                output.push({allowedEndDate:food.allowedEndDate,sizes, category:category.name, id:food._id,description:food.description, url:food.url, name:food.name})
-            }
-            return res.status(200).json(output)
+            let response = await FoodModel.find().select("-_v, -_id")
+
+            return res.status(200).json(response)
     }
     catch(error) {
         console.log(error)
