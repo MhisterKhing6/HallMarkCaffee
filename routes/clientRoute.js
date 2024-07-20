@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { decodeToken, getAuthorizationtoken } from "../utils/WebTokenController.js";
-import { UserModel } from "../models/user.js";
-import { erroReport } from "../utils/errors.js";
-import { AdminController } from "../controllers/adminController.js";
 import { ClientController } from "../controllers/clientController.js";
+import { UserModel } from "../models/user.js";
+import { decodeToken, getAuthorizationtoken } from "../utils/WebTokenController.js";
+import { erroReport } from "../utils/errors.js";
 
 let clientRoute = Router()
 
@@ -15,7 +14,7 @@ clientRoute.use(async(req, res, next) => {
     if(!details)
         return erroReport(res, 401, "expiredSes")
     let user = await UserModel.findById(details.id)
-    if(user.role !== "client")
+    if(user.role !== "customer")
         return erroReport(res, 400, "unAuth")
     req.user = user
     next()
@@ -34,6 +33,37 @@ clientRoute.post("/address", ClientController.addAddress)
  * domain:client and users
  */
 
-clientRoute.get("/food", AdminController.viewFoods)
+/**
+ * post order with  food item
+ * method: post
+ * domain: client
+ */
+clientRoute.post('/order', ClientController.order)
 
-export {clientRoute}
+/**
+ * view foods not delivered
+ * method: post
+ * domain: client
+ */
+clientRoute.get('/order', ClientController.OrderNotDelivered)
+
+/**
+ * edit order
+ * method: put
+ * u
+ */
+clientRoute.put("/order", ClientController.editOrder)
+export { clientRoute };
+
+/**
+ * get food items for a an order
+ * method: get
+ */
+
+clientRoute.get("/order/:orderId", ClientController.orderItems)
+
+/**
+ * get enabled foods
+ * method:get
+ */
+clientRoute.post("/food", ClientController.searchFood)

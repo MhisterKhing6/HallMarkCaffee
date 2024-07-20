@@ -17,5 +17,27 @@ nonAuthRoute.post("/register/admin", UserController.registerAdmin)
 */
 nonAuthRoute.post("/login", UserController.login)
 
+/**
+* sendVerification number
+* method: get
+* domain: public
+*/
+nonAuthRoute.get("/verification/code/:email", UserController.sendVerificationNumber)
 
-export {nonAuthRoute}
+/**
+* sendVerification number
+* method: post
+* domain: public
+*/
+nonAuthRoute.post("/verify", UserController.verify)
+
+/**
+* update password
+* method: post
+* domain: public
+*/
+nonAuthRoute.post("/update/password", UserController.updatePassword)
+
+
+
+export { nonAuthRoute };

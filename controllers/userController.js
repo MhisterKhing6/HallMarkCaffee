@@ -2,12 +2,12 @@
 controls user endpoints operations
 */
 /*handles user controller functions */
-import { UserModel } from "../models/user.js"
-import { sendEmailVerification } from "../utils/EmailHandler.js"
-import sha1 from "sha1"
 import generatePassword from "generate-password"
-import { erroReport } from "../utils/errors.js"
+import sha1 from "sha1"
+import { UserModel } from "../models/user.js"
+import { sendEmailVerification, sendResetPassword } from "../utils/EmailHandler.js"
 import { generateToken } from "../utils/WebTokenController.js"
+import { erroReport } from "../utils/errors.js"
 
 class UserController  {
 
@@ -31,6 +31,7 @@ class UserController  {
             return erroReport(res, 400, "alregistered")        
         try {
             let password = generatePassword.generate({length:8, numbers:true})
+            console.log(password)
             let passwordHash = sha1(password)
             let userDb = UserModel({name:userDetails.name, email:userDetails.email, passwordHash})
             //send verificaion message
@@ -101,6 +102,109 @@ class UserController  {
             return erroReport(res, 501,"internalE")
         }   
     }
+
+    //handle verification
+    static sendVerificationNumber = async (req, res) => {
+        /**
+        * sendVerification : sends verification details to user email
+        * @param {object} req: request object
+        * @param {object} res: response
+        */
+       let userEmail = req.params.email
+       try{
+           //check if the user is registered
+           let customer = await UserModel.findOne({email:userEmail})
+           if(!customer)
+               return res.status(401).json({"message": "user isn't registered"})
+           //delete old verification entry
+           await VerifTokenModel.deleteOne({"userId": customer._id.toString()})
+           //generate verifcation entry and save
+           let verficaitonDetails = {userId:customer._id.toString(), type:"password", verificationCode:generateSecretNumber()}
+           let verificatonEntry = await new VerifTokenModel(verficaitonDetails).save()
+           //check the type to determine the type of message to send
+           sendResetPassword({email:customer.email, name:customer.name}, verficaitonDetails.verificationCode)
+           //send verification id to user_id to user
+           res.status(200).json({"verificationId":verificatonEntry._id.toString(), "userId":customer._id.toString()})
+       }catch(err){
+           console.log(err)
+           res.status(501).json({"message": "internal server error"})
+       }
+   }
+
+   static verify = async (req, res) => {
+    /**
+      * resetPassword : reset user passwords
+      * @param {object} req: request object
+      * @param {object} res: response
+      */ 
+
+    let verficationDetails = req.body    
+     //check if all details fields are given
+     if(!(verficationDetails.verificationId && verficationDetails.verificationCode))
+          return res.status(400).json({"message": "fields missing"})
+     try {
+         //check for verification entry
+         let verificationEntry = await VerifTokenModel.findOne({_id: new ObjectId(verficationDetails.verificationId)})
+         if (!verificationEntry)
+             return res.status(401).json({"message": "no verification entry found"})
+         //check if token has expired
+         if(TwoHourPass(verificationEntry.createdDate)) {
+             //delete token entry
+             await VerifTokenModel.deleteOne({_id: verificationEntry._id})
+             return res.status(401).json({"message": "token expired"})
+         }
+         //check if user secrete number matches the one sent via email
+         if(verficationDetails.verificationCode !== verificationEntry.verificationCode)
+             return res.status(401).json({"message": "numbers dont match"})
+         //update verification entry
+         verificationEntry.verified = true
+         await verificationEntry.save()
+        
+         return res.status(200).json({verificationId: verificationEntry._id.toString(), message:"success"})
+         
+     }catch(err) {
+         console.log(err)
+         res.status(501).json({"message": "internal server error"})
+     }
+ }
+
+ static updatePassword = async (req, res) => {
+    /**
+     * updatePassword : update user passwords
+     * @param {object} req: request object
+     * @param {object} res: response
+     */ 
+    //update history
+    let updateDetials = req.body
+    //check if all user detials are given
+    if(!(updateDetials.password && updateDetials.verificationId))
+        return res.status(400).json({"message": "fields missing"})
+    //check for verifcation database entry
+    try {
+        //check for verification entry
+        let verificationEntry = await VerifTokenModel.findOne({_id:new ObjectId(updateDetials.verificationId)})
+        if(!verificationEntry)
+            return res.status(401).json({"message": "no verification entry found"})
+        //check if user has verify and the type of verification is reset password
+        if(!(verificationEntry.verified && verificationEntry.type === "password"))
+            return res.status(401).json({"message": "user not verfied"})
+        //get and verify user
+        let user = await UserModel.findOne({_id: new ObjectId(verificationEntry.userId)})
+        if(!user)
+            return await  res.status(401).json({"message": "user not registered"})
+        //update user's password
+        user.passwordHash = sha1(updateDetials.password)
+        await user.save()
+        //delete token entry
+        await VerifTokenModel.deleteOne({_id:verificationEntry._id})
+        //return response to user
+        return res.status(200).json({id: user._id.toString() , "message": "password changed"})
+    }catch(err) {
+        console.log(err)
+        res.status(501).json({"message": "internal server error"})
+    }
+
+}
 }
 
-export {UserController}
+export { UserController }

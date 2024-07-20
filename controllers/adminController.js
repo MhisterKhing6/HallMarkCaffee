@@ -1,6 +1,8 @@
+import moment from "moment"
 import { FoodModel } from "../models/food.js"
 import { FoodCatModel } from "../models/foodCategories.js"
-import { addDays } from "../utils/datesHandler.js"
+import { OrderModel } from "../models/orders.js"
+import { UserModel } from "../models/user.js"
 import { erroReport } from "../utils/errors.js"
 
 /** Handle admin funtions*/
@@ -59,7 +61,7 @@ class AdminController {
      */
     static uploadFood = async (req, res) => {
         try {
-            let foodDetails = req.body //{category:categoryId,description:description name ,url:urlOfPic, name:nana,sizes:[{name:larg, price:300},{name:medium, price:200}]}
+            let foodDetails = req.body //{category:categoryId,description:description name ,url]}
             let food = null
             //logic for already uploaded foods
             if(foodDetails.name && foodDetails.size)
@@ -175,37 +177,43 @@ class AdminController {
  * @param {Object} res 
  */
     static enableFood = async (req, res) => {
-        let foods = req.body // [{id, duration:a | w}]
-        let notFoundFood = []
+        //get enable status
+        let details  = req.body
         try {
-        for(const food of foods) {
-            if(!food.id)
-                return erroReport(res, 401, false, "wrong format food should contain id")
-            let foodDb = await FoodModel.findById(food.id)
-            if(!foodDb)
-                notFoundFood.push(food)
-            else {
-                let addedDate = null
-                if(food.duration !== "a")
-                    addedDate = addDays(7)
-                else
-                    addedDate = addDays(1)
-                foodDb.allowedEndDate = addedDate
-                await foodDb.save()
-            }
-        }
-        let message = "success"
-        let status = 200
-        if(notFoundFood.length !== 0) {
-            message = `couldnt find these foods ${allowedEndDate}`
-            status = 400
-        }
-        res.status(status).json({message})
+            //check if all food details are given
+        if(details.foodId && details.status )
+            return erroReport(res, 400, 'allFields')
+        //find food db entry
+        let food = await FoodModel.findById(details.foodId)
+        if (!food)
+            return res.status(400).json({message: "food entry not found"})
+        //else update food status
+        food.enabled = details.status === "disable" ? false : true
+        await food.save()
+        return res.status(200).json({"message": "food status updated"})
     } catch(error) {
         console.log(error)
         return erroReport(res, 501, "internalE")
     }
-}
+  }
+
+  
+  static ViewOrders = async (req, res) => {
+    //returns all orders that falls in a week
+    let startOfWeek = new Date(moment().clone().startOf("week").toISOString() )//get start of week
+    let endOfWeek =  new Date(moment().clone().endOf("week").toISOString())
+    //check if created date is greater or equal to start of week date but lesser or equals end of week date
+    const orders = await OrderModel.find({$and:[{createdAt:{$lte:endOfWeek}}, {createdAt: {$gte:startOfWeek}}]}).lean().select("-__v")
+    //orders
+    let returnOrder = []
+    //get user name
+    for (const order of orders) {
+        let customer = await UserModel.findById(order.customerId).select("name").lean()
+        returnOrder.push({...order, name:customer.name})
+    }
+    return res.status(200).json(returnOrder)
+  }
+
 
 }
 export { AdminController }
