@@ -14,7 +14,7 @@ connectDb()
 
 //middlewares
 server.use(Cors()) //cross origin communication
-server.use(Express.json({})) // json body parsing
+server.use(Express.json({limit:"100mb"})) // json body parsing
 server.use(Express.urlencoded({ extended: false }))
 
 //routes
