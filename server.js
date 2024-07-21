@@ -16,7 +16,8 @@ connectDb()
 server.use(Cors()) //cross origin communication
 server.use(Express.json({limit:"100mb"})) // json body parsing
 server.use(Express.urlencoded({ extended: false }))
-
+//static endpoints
+server.use('/public',Express.static('public'))
 //routes
 server.use("/auth", nonAuthRoute)
 //admin route
