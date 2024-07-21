@@ -5,7 +5,7 @@ const UserSchema = new Schema({
     email: {type:String, required: true, unique:true},
     profilePicPath : {type:String, required:false},
     emailVerified: {type:Boolean, required: true, default:false},
-    role: {type:String, require:true, enum:['customer', 'admin', "delivery"], default:"customer"}
+    role: {type:String, require:true, enum:['customer', 'admin', "Dispatcher"], default:"customer"}
 })
 
 //create a model

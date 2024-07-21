@@ -23,7 +23,7 @@ class UserController  {
         if(!(userDetails.email && userDetails.name && userDetails.role))
             return erroReport(res, 400, "allFields")
         //check if is correct role
-        if(!(["customer", "delivery"].includes(userDetails.role)))
+        if(!(["customer", "Dispatcher"].includes(userDetails.role)))
             return erroReport(res, 400, false, "wrong user role, accepted roles [customer,delivery]")
         //check if the user is already register
         let alreadyUser = await UserModel.findOne({email: userDetails.email})
@@ -31,7 +31,6 @@ class UserController  {
             return erroReport(res, 400, "alregistered")        
         try {
             let password = generatePassword.generate({length:8, numbers:true})
-            console.log(password)
             let passwordHash = sha1(password)
             let userDb = UserModel({name:userDetails.name, email:userDetails.email, passwordHash})
             //send verificaion message
@@ -54,9 +53,13 @@ class UserController  {
          * @returns {object} : json response of user detials
          */
         let userDetails = req.body
+        
         //check if all required user details are given
         if(!(userDetails.email && userDetails.name && userDetails.password))
             return erroReport(res, 400, "allFields")
+        //check if password has length greater than 8
+        if(userDetails.password.length < 8)
+            return res.status(400).json({message:"password length should have length greater than 8"})
         //check if the user is already register
         let alreadyUser = await UserModel.findOne({email: userDetails.email})
         if(alreadyUser)

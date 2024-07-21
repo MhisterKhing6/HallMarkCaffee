@@ -1,9 +1,12 @@
 import moment from "moment"
+import path from "path"
 import { FoodModel } from "../models/food.js"
 import { FoodCatModel } from "../models/foodCategories.js"
 import { OrderModel } from "../models/orders.js"
 import { UserModel } from "../models/user.js"
+import { generateFileUrl, saveUpolaodFileDisk } from "../utils/FileHandler.js"
 import { erroReport } from "../utils/errors.js"
+
 
 /** Handle admin funtions*/
 class AdminController {
@@ -61,22 +64,22 @@ class AdminController {
      */
     static uploadFood = async (req, res) => {
         try {
-            let foodDetails = req.body //{category:categoryId,description:description name ,url]}
+            let foodDetails = req.body //{category:categoryId,description:description name ,url, fileName, size, special, day]}
             let food = null
             //logic for already uploaded foods
             if(foodDetails.name && foodDetails.size)
                 food = await FoodModel.findOne({name:foodDetails.name, size:foodDetails.size}, {_id:0}).lean().select("-_id, -__v")
             //if no found is already uploaded ensure all fields are given
-            if(!food)
+            if(!food) {
                 if(!(foodDetails.size && foodDetails.price && foodDetails.url && foodDetails.description)) 
                     return erroReport(res, 400, "allFields")
+            }
             //ensure if food is special day is given
             if(foodDetails.special && !foodDetails.day)
                 return erroReport(res, 400, false, "wrong format. if food is special but day is null")
 
-
             //check if the save food size and price is already saved
-            if((food.size === foodDetails.size) && (food.price === foodDetails.price))
+            if(food && (food.size === foodDetails.size) && (food.price === foodDetails.price))
                 return erroReport(res, 400, false, "food with the save entry already saved")
             //form food model
             let foodDb = null
@@ -84,9 +87,27 @@ class AdminController {
             //and replace just replace the details that is given
             if(food)
                 foodDb = new FoodModel({...food, ...foodDetails})
-            else
+            else{
                 foodDb = new FoodModel(foodDetails)
-            //save the food
+                //image handling
+                //get extension from file 
+                let ext = path.extname(foodDetails.fileName)
+                //generate unique file name with food id
+                let fileName = foodDb._id.toString() + ext
+                console.log(fileName)
+                let base64 = foodDetails.url.split("base64,")[1]
+                let data = await saveUpolaodFileDisk(fileName, base64)
+                //check if image is successfully saved
+                if(data) {
+                    let url =  generateFileUrl(data.ulrPath)
+                    console.log(url)
+                    //update food url
+                    foodDb.ulrPath = url
+                    console.log(url)
+                } else {
+                    return res.status(501).json({"message": "cant saved image"})
+                }
+            }
             await foodDb.save()
 
             return res.status(200).json({"message": "food saved"})
