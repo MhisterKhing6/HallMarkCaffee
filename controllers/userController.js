@@ -96,9 +96,10 @@ class UserController  {
         if(user.passwordHash !== sha1(loginDetails.password))
             return erroReport(res, 400, "wrongPassword")
         //generate token for the user
+        let newUser = {role:user._doc.role, name:user._doc.name, email:user._doc.email}
         let token = generateToken({email:user.email, id:user.id})
         //send token to user
-        return res.status(200).json({token, "message": "login successful"})
+        return res.status(200).json({token, "message": "login successful", user:newUser})
 
         }catch(err) {
             console.log(err)
