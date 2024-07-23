@@ -190,6 +190,14 @@ class AdminController {
         return erroReport(res, 501, false, "internalE")
         }
     }
+/**
+ * Get customers
+ */
+
+    static customers = async(req, res) => {
+        let users = await UserModel.find({role:{$ne:"admin"}}).select("-__v").lean()
+        return res.status(200).json(users)
+    }
 
 
 /**

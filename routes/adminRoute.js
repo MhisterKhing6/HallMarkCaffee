@@ -76,6 +76,7 @@ adminRoute.put("/food", AdminController.editFood)
  */
 adminRoute.delete("/food/:id", AdminController.deleteFood)
 
+
 /**
  * enable or disable food
  * method: post
@@ -87,5 +88,7 @@ adminRoute.post("/food/status", AdminController.enableFood)
 adminRoute.get("/week/orders", AdminController.ViewOrders)
 //history
 
+/**Customers */
+adminRoute.get("/users", AdminController.customers)
 
 export { adminRoute };
