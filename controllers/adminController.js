@@ -100,10 +100,8 @@ class AdminController {
                 //check if image is successfully saved
                 if(data) {
                     let url =  generateFileUrl(data.ulrPath)
-                    console.log(url)
-                    //update food url
-                    foodDb.ulrPath = url
-                    console.log(url)
+                    foodDb.url = url
+                    
                 } else {
                     return res.status(501).json({"message": "cant saved image"})
                 }
@@ -136,16 +134,32 @@ class AdminController {
     static editFood = async (req, res) => {
         try {
             let foodDetails = req.body //{category:categoryId,description:description name ,url:urlOfPic, name:nana,sizes:[{name:larg, price:300},{name:medium, price:200}]}
-            let acceptedKeys = ["sizes","price","special", "day", "name", "url", "description", "category"]
+            let acceptedKeys = ["size","special", "day", "price",'fileName', "name", "url", "description", "categoryId"]
             //check if all food fields are given
             if(!foodDetails.id)
                 return erroReport(res, 400, false, "id for food is required")
             let food = await FoodModel.findById(foodDetails.id)
             //check for entry and update according
             for(const key of Object.keys(foodDetails)) {
-                if(!acceptedKeys.includes(key))
+                if(key !=="id" && !acceptedKeys.includes(key))
                     return erroReport(res, 400, false, `the key ${key} is not accepted as a valid column`)
-                food[key] = foodDetails[key]
+                if(key === "url") {
+                    let ext = path.extname(foodDetails.fileName)
+                    //generate unique file name with food id
+                    let fileName = food._id.toString() + ext
+                    let base64 = foodDetails.url.split("base64,")[1]
+                    let data = await saveUpolaodFileDisk(fileName, base64)
+                    //check if image is successfully saved
+                    if(data) {
+                        let url =  generateFileUrl(data.ulrPath)
+                        //update food url
+                        food.url= url
+                    }
+                }
+                if(!(key === "url")) {
+                    food[key] = foodDetails[key]
+                }
+                
             }
             await food.save()
             return res.status(200).json({"message": "success"})
