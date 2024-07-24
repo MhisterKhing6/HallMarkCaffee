@@ -53,7 +53,7 @@ clientRoute.get('/order', ClientController.OrderNotDelivered)
  * u
  */
 clientRoute.put("/order", ClientController.editOrder)
-export { clientRoute };
+
 
 /**
  * get food items for a an order
@@ -67,3 +67,5 @@ clientRoute.get("/order/:orderId", ClientController.orderItems)
  * method:get
  */
 clientRoute.post("/food", ClientController.searchFood)
+
+export { clientRoute };

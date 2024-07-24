@@ -32,7 +32,6 @@ class ClientController {
         let expectedDate = dateOfDay(orderDetails.day)
 
         let order = await (new OrderModel({customerId:req.user._id, expectedDate, day:orderDetails.day}))
-        console.log(order)
         
         //calculate total price
         let totalPrice = 0
