@@ -1,8 +1,8 @@
 import { UserAddressModel } from "../models/address.js"
 import { FoodModel } from "../models/food.js"
-import { FoodCatModel } from "../models/foodCategories.js"
 import { OrderItemModel } from "../models/orderItem.js"
 import { OrderModel } from "../models/orders.js"
+import { OrderPaymentModel } from "../models/payment.js"
 import { addDays, dateOfDay } from "../utils/datesHandler.js"
 
 
@@ -23,10 +23,10 @@ class ClientController {
         return res.status(200).json("address added")
     }
     static order= async (req, res) => {
-        //order items {day:day, orderItems:[{foodId:quantity, price}, {foodId:quantity, price}]}
+        //order items {day:day, paymentMode:cash:online orderItems:[{foodId:quantity, price}, {foodId:quantity, price}]}
         let orderDetails = req.body
         //form food order
-        if(!(orderDetails.day && orderDetails.orderItems))
+        if(!(orderDetails.paymentMode && orderDetails.day && orderDetails.orderItems))
             return res.status(400).json({"message": "not all fields given"})
         //get date of the day of order
         let expectedDate = dateOfDay(orderDetails.day)
@@ -41,8 +41,10 @@ class ClientController {
             return new OrderItemModel({foodId:orderItems.foodId, quantity:orderItems.quantity, orderId:order._id, unitPrice: orderItems.unitPrice}).save()
         })
         order.totalPrice = totalPrice
+        //make payment entry
+        let paymentEntry = OrderPaymentModel({orderId:order._id, mode:orderDetails.paymentMode}).save()
         //save orders and order items
-        await Promise.all([order.save(), ...modelOrder])
+        await Promise.all([order.save(), ...modelOrder, paymentEntry])
         return res.status(200).json({"message": "orders saved"})
     }
 

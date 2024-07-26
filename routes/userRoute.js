@@ -39,5 +39,4 @@ nonAuthRoute.post("/verify", UserController.verify)
 nonAuthRoute.post("/update/password", UserController.updatePassword)
 
 
-
 export { nonAuthRoute };

@@ -1,8 +1,6 @@
 import mongoose from "mongoose";
 import configuration from "config"
-import AutoIncrement from "mongoose-sequence"
 
-const connection = mongoose.createConnection(configuration.MONGO_URI, {autoIndex:true})
 const connectDb = async () => {
     /**
      * connectDb : Connect database to mongodb instance
@@ -23,5 +21,4 @@ const connectDb = async () => {
     }
     
 }
-let AutoIncrementPlugin = AutoIncrement(connection)
-export {connectDb, AutoIncrementPlugin}
+export {connectDb}

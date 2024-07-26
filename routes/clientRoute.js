@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { ClientController } from "../controllers/clientController.js";
+import { PaymentController } from "../controllers/paymentController.js";
 import { UserModel } from "../models/user.js";
 import { decodeToken, getAuthorizationtoken } from "../utils/WebTokenController.js";
 import { erroReport } from "../utils/errors.js";
@@ -14,8 +15,8 @@ clientRoute.use(async(req, res, next) => {
     if(!details)
         return erroReport(res, 401, "expiredSes")
     let user = await UserModel.findById(details.id)
-    if(user.role !== "customer")
-        return erroReport(res, 400, "unAuth")
+    /*if(user.role !== "customer")
+        return erroReport(res, 400, "unAuth") */
     req.user = user
     next()
 
@@ -67,5 +68,18 @@ clientRoute.get("/order/:orderId", ClientController.orderItems)
  * method:get
  */
 clientRoute.post("/food", ClientController.searchFood)
+
+/**
+ * payment gateways
+ * method:get
+ * the authorization url for payment and access codes
+ */
+clientRoute.get("/payment-gateway/:orderId", PaymentController.startPayment)
+
+/**
+ * check transaction status
+ * method:get
+ */
+clientRoute.get("/payment/status/:orderId", PaymentController.checkTransaction)
 
 export { clientRoute };

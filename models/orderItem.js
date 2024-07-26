@@ -1,6 +1,6 @@
 import { Schema, Types, model } from "mongoose";
 const OrderItemSchema = new Schema({
-    unitPrice:{type: Types.Decimal128, required:true},
+    unitPrice:{type: Number, required:true},
     foodId: {type:String, required:true},
     quantity: {type:Number, required: true},
     orderId: {type:Types.ObjectId, required: true},
