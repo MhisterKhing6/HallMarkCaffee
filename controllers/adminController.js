@@ -210,7 +210,13 @@ class AdminController {
 
     static customers = async(req, res) => {
         let users = await UserModel.find({role:{$ne:"admin"}}).select("-__v").lean()
-        return res.status(200).json(users)
+        let usersWithOrder = []
+        for(const user of users) {
+            let order = await OrderModel.findOne({"customerId": user._id}).lean()
+            user.currentOrder = order
+            usersWithOrder.push(user)
+        }
+        return res.status(200).json(usersWithOrder)
     }
 
 

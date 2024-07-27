@@ -148,13 +148,13 @@ class ClientController {
         let enabledFood = null
         if(!foodPattern){
             //returns all foods items that are enabled
-            enabledFood = await FoodModel.find({enabled:true}).select("-__v").lean()
+            enabledFood = await FoodModel.find({"enabled":true}).select("-__v").lean()
             //return foods
             //that are available
         }
         else {
             //search for meals that has pattern in them
-            enabledFood = await FoodModel.find({name: {"$regex": foodPattern, "$options": "i"}}).select("-__v").lean()
+            enabledFood = await FoodModel.find({"enabled":true, name: {"$regex": foodPattern, "$options": "i"}}).select("-__v").lean()
         }
         return res.status(200).json(enabledFood)
     }
