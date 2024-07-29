@@ -39,7 +39,7 @@ clientRoute.post("/address", ClientController.addAddress)
  * method: post
  * domain: client
  */
-clientRoute.post('/order', ClientController.order)
+clientRoute.post('/order', ClientController.accumulateOrder)
 
 /**
  * view foods not delivered

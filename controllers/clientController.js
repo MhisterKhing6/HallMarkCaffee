@@ -4,6 +4,7 @@ import { OrderItemModel } from "../models/orderItem.js"
 import { OrderModel } from "../models/orders.js"
 import { OrderPaymentModel } from "../models/payment.js"
 import { addDays, dateOfDay } from "../utils/datesHandler.js"
+import { paymentGateWay } from "../utils/paymentGateway.js"
 
 
 class ClientController {
@@ -22,11 +23,58 @@ class ClientController {
         let response = await new UserAddressModel(addressinfo).save()
         return res.status(200).json("address added")
     }
-    static order= async (req, res) => {
+
+
+    static accumulateOrder = async (req, res) => {
+        let orderDetail = req.body
+        if(!(orderDetail.paymentMode && orderDetail.totalPrice)) {
+            res.status(400).json({"message": "not all fields given"})
+        }
+
+        let orders = []
+        let orderItems = []
+        let payment = new OrderPaymentModel({mode:orderDetail.paymentMode, expectedAmount:orderDetail.totalPrice})
+
+        //save the information in a list
+        for(const key of Object.keys(orderDetail)) {
+            if(!["totalPrice", "paymentMode"].includes(key)) {
+                let day = orderDetail[key]
+                //form order model
+                if(day.items.length !== 0) { //check if day has value
+                    let orderSingle = new OrderModel({paymentId:payment._id,customerId:req.user._id, day:key, expectedDate:day.date })
+                    for(const food of day.items) {
+                        let orderItem = new OrderItemModel({foodId:food._id.toString(), orderId:orderSingle._id, unitPrice:food.price, size:food.size, name:food.name, quantity:food.quantity})
+                        orderSingle.totalPrice += (food.price * food.quantity)
+                        orderItems.push(orderItem.save())
+                    }
+                    orders.push(orderSingle.save())
+                }    //form day and order item
+            }
+        }
+        let output = {message:"success"}
+            //check if payment is online
+            if(orderDetail.paymentMode !== "cash") {
+                //initiate payment to paystack
+                let amountInPeswas = orderDetail.totalPrice * 100
+                //get user email
+                let userObject = {email:req.user.email, amount:amountInPeswas}
+                let response = await paymentGateWay("/transaction/initialize", userObject)
+                //check status
+                if(response.status !== 200)
+                    return res.status(501).json({"message":"server side error"})
+                output = response.data.data
+                payment.reference = response.data.data.reference
+                payment.accessCode = response.data.data.access_code
+                payment.urlPayment = response.data.data.authorization_url
+            }
+        await Promise.all([payment.save(), ...orders, ...orderItems]) //save all order entries
+        return res.status(200).json(output)
+    }
+    static order = async (req, res) => {
         //order items {day:day, paymentMode:cash:online orderItems:[{foodId:quantity, price}, {foodId:quantity, price}]}
         let orderDetails = req.body
         //form food order
-        if(!(orderDetails.paymentMode && orderDetails.day && orderDetails.orderItems))
+        if(!(orderDetails.paymentMode && orderDetails.totalPrice && orderDetails.items))
             return res.status(400).json({"message": "not all fields given"})
         //get date of the day of order
         let expectedDate = dateOfDay(orderDetails.day)

@@ -65,6 +65,7 @@ class PaymentController {
             }
             if(response.data.data.status !== "success") {
                 payment.status = response.data.data.status
+                payment.amount = response.data.data.amount
             }
             status = payment.status
             await payment.save()

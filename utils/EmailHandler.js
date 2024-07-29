@@ -78,6 +78,35 @@ const sendResetPassword  = async (user, secreteText) => {
 }
 
 
-export { sendEmailVerification, sendResetPassword };
+const sendStatusInformation  = async (user, orderId, status, day) => {
+  /**
+   * send status update : sends email to user with verificaiton code
+   * @param {object} user: object containing user name and email
+   * @param {string} orderId: secret test to send
+   * @return {object | null} if message is sent successfully
+   */
+const mailOptions = {
+  from: `"HallMark Caffee" <${configuration.email.email}>`, // sender address
+  template: "updateStatus", // the name of the template file, i.e., email.handlebars
+  to: user.email,
+  subject: `Order Status, ${user.name}`,
+  context: {
+    name: user.name,
+    orderId:orderId,
+    status:status,
+    day:day
+  },
+};
+try {
+  return await transporter.sendMail(mailOptions)
+} catch(err) {
+  console.log(`${err} \n sending email ${user.name} ${user.email}`)
+  return null
+}
+}
+
+
+
+export { sendEmailVerification, sendResetPassword, sendStatusInformation };
 
   

@@ -4,6 +4,8 @@ const OrderItemSchema = new Schema({
     foodId: {type:String, required:true},
     quantity: {type:Number, required: true},
     orderId: {type:Types.ObjectId, required: true},
+    name: {type:String},
+    size: {type:String}
 })
 
 

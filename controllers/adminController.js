@@ -6,6 +6,7 @@ import { OrderModel } from "../models/orders.js"
 import { UserModel } from "../models/user.js"
 import { generateFileUrl, saveUpolaodFileDisk } from "../utils/FileHandler.js"
 import { erroReport } from "../utils/errors.js"
+import { sendStatusInformation } from "../utils/EmailHandler.js"
 
 
 /** Handle admin funtions*/
@@ -263,6 +264,74 @@ class AdminController {
     return res.status(200).json(returnOrder)
   }
 
+  static statistics = async (req, res) => {
+    const duration = req.params.duration
+    if(!["day", "week", "month", "year", "lifetime"].includes(duration))
+        return res.status(400).json({"message": "wrong format, expected durations are day, week, month, year, all"})
+    let  start = null
+    let  end = null
+    if(duration === "day") {
+        start = new Date(moment().startOf("day").toISOString() )//get start of week
+        end =  new Date(moment().endOf("day").toISOString())
+    }else if(duration === "week") {
+         start = new Date(moment().startOf("week").toISOString() )//get start of week
+         end = new Date(moment().endOf("week").toISOString())
+    } else if(duration === "month"){
+            start = new Date(moment().startOf("month").toISOString() )//get start of week
+            end   =  new Date(moment().endOf("month").toISOString())
+        } else if (duration === "year") {
+            start = new Date(moment().startOf("year").toISOString() )//get start of week
+            end = new Date(moment().endOf("year").toISOString())
+        }
+    //check if duration is lifetime return all order entry
+    let query =  duration === "lifetime" ? {} : {$and:[{expectedDate:{$gte:start}}, {expectedDate:{$lte:end}}, {status:"delivered"}]}
+   
+    let dataSetOrder = await OrderModel.find(query).select("_id, totalPrice").lean()
+    
+    let totalSales = 0
+    for (const order of dataSetOrder) {
+        totalSales += order.totalPrice
+    }
+    let totalOrders = dataSetOrder.length
+    let averageSales = totalOrders === 0 ? 0 : totalSales / totalOrders
+    //return response
+    let response = {totalSales, averageSales, totalOrders}
+    return res.status(200).json(response)
+  }
 
+  
+  /*static history = async (req, res) => {
+    //get all the history
+    let pattern = await OrderModel.find().
+  } */
+
+ static updateOrder = async (req, res) => {
+    let details = req.body
+    if(!(details.orderId && details.status))
+        return res.status(400).json({"message": "endpoint require orderId and status"})
+    let order = await OrderModel.findById(details.orderId)
+    if(!order)
+        return res.status(400).json({"message": "wrong order id"})
+    if(!["preparing", "on delivery", "cancelled", "delivered"].includes(details.status))
+        return res.status(400).json({"message":"wrong status"})
+    order.status = details.status
+    await order.save()
+    let user = await UserModel.findById(order.customerId).lean()
+    sendStatusInformation(user, order._id.toString(), order.day,order.status )
+    return res.status(200).json({"message": "status updated"})
+ }
+
+ static searchOrder = async (req, res) => {
+    let details = req.body
+    let order = []
+    if(details.pattern){
+        let user = await UserModel.findOne({name:{"$regex": details.pattern, "$options": "i"}})
+        if(user)
+            order = await OrderModel.find({status:{$ne:"delivered"}, customerId:user._id})
+    }
+    return res.status(200).json(order)
+ }
 }
+
+
 export { AdminController }

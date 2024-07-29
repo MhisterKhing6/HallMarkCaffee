@@ -91,4 +91,19 @@ adminRoute.get("/week/orders", AdminController.ViewOrders)
 /**Customers */
 adminRoute.get("/users", AdminController.customers)
 
+/**
+ * Statistics
+ *  */
+adminRoute.get("/statistics/:duration", AdminController.statistics)
+
+/**
+ * update order
+ */
+adminRoute.post("/order-status", AdminController.updateOrder)
+
+/**
+ * Admin route 
+ */
+adminRoute.post('/search/order', AdminController.searchOrder)
+
 export { adminRoute };

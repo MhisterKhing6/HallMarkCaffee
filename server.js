@@ -5,6 +5,7 @@ import { connectDb } from "./utils/MongodbConector.js";
 import { nonAuthRoute } from "./routes/userRoute.js";
 import { adminRoute } from "./routes/adminRoute.js";
 import { clientRoute } from "./routes/clientRoute.js";
+import { dispatcherRoute } from "./routes/dispatcherRoute.js";
 
 //server initializing
 const server = Express()
@@ -24,6 +25,9 @@ server.use("/auth", nonAuthRoute)
 server.use('/admin', adminRoute)
 //client route
 server.use('/user', clientRoute)
+
+//dispatcher
+server.use("/dispatcher", dispatcherRoute)
 
 
 
