@@ -42,16 +42,15 @@ class PaymentController {
     static checkTransaction = async (req, res) => {
         //verify payment
         //get orderId to verify transaction
-        let orderId = req.params.orderId
+        let reference = req.params.reference
         //get order
-        let payment = await OrderPaymentModel.findOne({orderId})
-        let order = await OrderModel.findById(orderId)
+        let payment = await OrderPaymentModel.findOne({reference})
         if(!payment) {
             return res.status(400).json({"message": "wrong order id"})
         }
         //check to see if transaction has refrence
         let status = null;
-        if(payment.mode !== "Online"){
+        if(payment.mode !== "online"){
             status = payment.status
         }
         else {
@@ -60,13 +59,13 @@ class PaymentController {
             let response = await getPaymentInfo(url)
             if(response.status !== 200)
                 return res.status(501).json({"message": "server side error"})
-            if(response.data.data.status === "success" && (order.totalPrice*100 <= response.data.data.amount)) {
+            if(response.data.data.status === "success" && (payment.expectedAmount*100 <= response.data.data.amount)) {
                 payment.status = "payed"
             }
             if(response.data.data.status !== "success") {
                 payment.status = response.data.data.status
-                payment.amount = response.data.data.amount
             }
+            payment.payedAmount = (response.data.data.amount / 100)
             status = payment.status
             await payment.save()
         }

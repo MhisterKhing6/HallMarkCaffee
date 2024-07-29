@@ -80,6 +80,6 @@ clientRoute.get("/payment-gateway/:orderId", PaymentController.startPayment)
  * check transaction status
  * method:get
  */
-clientRoute.get("/payment/status/:orderId", PaymentController.checkTransaction)
+clientRoute.get("/payment/status/:reference", PaymentController.checkTransaction)
 
 export { clientRoute };
