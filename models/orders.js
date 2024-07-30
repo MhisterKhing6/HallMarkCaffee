@@ -6,7 +6,7 @@ let Order = new Schema({
     status : {type:String, enum:["preparing", "on delivery", "cancelled", "delivered"]},
     expectedDate: {type:Date, required:true},
     day: {type:String, required: true},
-    paymentId:{type:Types.ObjectId, required:true}
+    paymentId:{type:Types.ObjectId, required:true},
     }
 )
 

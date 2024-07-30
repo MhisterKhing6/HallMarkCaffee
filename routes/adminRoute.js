@@ -85,7 +85,7 @@ adminRoute.delete("/food/:id", AdminController.deleteFood)
 adminRoute.post("/food/status", AdminController.enableFood)
 
 /** order managements */
-adminRoute.get("/week/orders", AdminController.ViewOrders)
+adminRoute.get("/week/orders", AdminController.customerOrders)
 //history
 
 /**Customers */
@@ -105,5 +105,10 @@ adminRoute.post("/order-status", AdminController.updateOrder)
  * Admin route 
  */
 adminRoute.post('/search/order', AdminController.searchOrder)
+
+/**
+ * get orders
+ */
+adminRoute.get("/order-items/:id", AdminController.orderDetails)
 
 export { adminRoute };

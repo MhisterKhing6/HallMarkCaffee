@@ -7,6 +7,7 @@ import { UserModel } from "../models/user.js"
 import { generateFileUrl, saveUpolaodFileDisk } from "../utils/FileHandler.js"
 import { erroReport } from "../utils/errors.js"
 import { sendStatusInformation } from "../utils/EmailHandler.js"
+import { OrderItemModel } from "../models/orderItem.js"
 
 
 /** Handle admin funtions*/
@@ -247,8 +248,32 @@ class AdminController {
     }
   }
 
+  static customerOrders = async (req, res) => {
+    let startOfWeek = new Date(moment().clone().startOf("week").toISOString() )//get start of week
+    let endOfWeek =  new Date(moment().clone().endOf("week").toISOString())
+    let customers = await OrderModel.distinct("customerId",{$and:[{createdAt:{$lte:endOfWeek}},  {status: {$ne:"delivered"}}, {createdAt: {$gte:startOfWeek}}]})
+    const customerInfo = []
+    for (const customer of customers) {
+        let cus = await UserModel.findById(customer)
+        customerInfo.push({"email": cus.email,"name": cus.name, "id":cus.id})
+    }
+    return res.status(200).json(customerInfo)
+}
+static orderDetails = async (req, res) => {
+    let customerId = req.params.id
+    let startOfWeek = new Date(moment().clone().startOf("week").toISOString() )//get start of week
+    let endOfWeek =  new Date(moment().clone().endOf("week").toISOString())
+    let orders = await OrderModel.find({$and:[{createdAt:{$lte:endOfWeek}}, {customerId},  {status: {$ne:"delivered"}}, {createdAt: {$gte:startOfWeek}}]}).lean()
+    let ordersWithItem = []
+    for(const order of orders) {
+        let orderItems = await OrderItemModel.find({orderId:order._id}).select("name quantity size price").lean()
+        order.items = orderItems
+        ordersWithItem.push(order)
+    }
+    return res.status(200).json(ordersWithItem)
+}
   
-  static ViewOrders = async (req, res) => {
+  static viewOrders = async (req, res) => {
     //returns all orders that falls in a week
     let startOfWeek = new Date(moment().clone().startOf("week").toISOString() )//get start of week
     let endOfWeek =  new Date(moment().clone().endOf("week").toISOString())
