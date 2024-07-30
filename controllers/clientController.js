@@ -27,7 +27,7 @@ class ClientController {
 
     static accumulateOrder = async (req, res) => {
         let orderDetail = req.body
-        if(!(orderDetail.paymentMode && orderDetail.totalPrice)) {
+        if(!(orderDetail.paymentMode && orderDetail.totalPrice && orderDetail.items)) {
             res.status(400).json({"message": "not all fields given"})
         }
 
@@ -36,9 +36,9 @@ class ClientController {
         let payment = new OrderPaymentModel({mode:orderDetail.paymentMode, expectedAmount:orderDetail.totalPrice})
 
         //save the information in a list
-        for(const key of Object.keys(orderDetail)) {
+        for(const key of Object.keys(orderDetail.items)) {
             if(!["totalPrice", "paymentMode"].includes(key)) {
-                let day = orderDetail[key]
+                let day = orderDetail.items[key]
                 //form order model
                 if(day.items.length !== 0) { //check if day has value
                     let orderSingle = new OrderModel({paymentId:payment._id,customerId:req.user._id, day:key, expectedDate:day.date })
