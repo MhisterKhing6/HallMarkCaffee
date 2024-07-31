@@ -3,6 +3,7 @@ import { FoodModel } from "../models/food.js"
 import { OrderItemModel } from "../models/orderItem.js"
 import { OrderModel } from "../models/orders.js"
 import { OrderPaymentModel } from "../models/payment.js"
+import { ExtraFundModel } from "../models/refund.js"
 import { addDays, dateOfDay } from "../utils/datesHandler.js"
 import { paymentGateWay } from "../utils/paymentGateway.js"
 
@@ -53,7 +54,7 @@ class ClientController {
         }
         let output = {message:"success"}
             //check if payment is online
-            if(orderDetail.paymentMode !== "cash") {
+            if(orderDetail.paymentMode === "online") {
                 //initiate payment to paystack
                 let amountInPeswas = orderDetail.totalPrice * 100
                 //get user email
@@ -101,7 +102,7 @@ class ClientController {
      */
     static OrderNotDelivered = async (req, res) => {
         //get customers orders where status is not delivered
-        let customersOrders = await OrderModel.find({customerId:req.user._id}).select("-__v").lean()
+        let customersOrders = await OrderModel.find({$and:[{customerId:req.user._id}, {status:{$nin: ['cancelled', 'delivered']}}]}).select("-__v").lean()
         //check if the customer can edit order or not
         let customerOrdersWithEditStatus = customersOrders.map((order) => {
                 //check if current date plus 3 days is less then expected date
@@ -112,7 +113,13 @@ class ClientController {
                 }
                 return order
         })
-        return res.status(200).json(customerOrdersWithEditStatus)
+        let ordersWithItem = []
+        for(const order of customerOrdersWithEditStatus) {
+        let orderItems = await OrderItemModel.find({orderId:order._id}).select("_id name quantity size price").lean()
+        order.items = orderItems
+        ordersWithItem.push(order)
+    }
+        return res.status(200).json(ordersWithItem)
     }
 
     static editOrder = async (req, res) => {
@@ -127,50 +134,100 @@ class ClientController {
             }
         } */
         let details = req.body
+        if(!(details.orderId))
+            return res.status(400).json({"message": "bad order id"})
         let order = await OrderModel.findById(details.orderId)
+        if(!order)
+            return res.status(400).json({mesage: "not order entry found for orderId given"})
+        let payMent = await OrderPaymentModel.findById(order.paymentId)
+        let totalPrice = order.totalPrice
+        let editedPrice = 0
         //check if the user requested for date change
-        if(details.orderObject.day) {
-            //update day and expected date
-            let expectedDate = dateOfDay(details.orderObject.day)
-            //get date of day and update expected date
-            order.day = details.orderObject.day
-            order.expectedDate = expectedDate
-            await order.save()
-        }
-        if(details.orderObject.orderItems) {
-            for(const orderItemDetails of details.orderObject.orderItems) {
+        if(details.orderItems) {
+            for(const orderItemDetails of details.orderItems) {
                 //check the action of order
                 if(orderItemDetails.action === "add") {
                     //form order item
-                    let orderItem = new OrderItemModel({foodId:"kofsi",orderId:order._id, unitPrice:orderItemDetails.unitPrice, quantity:orderItemDetails.quantity})
+                    let orderItem = new OrderItemModel({foodId:orderItemDetails._id.toString(),orderId:order._id, unitPrice:orderItemDetails.price,size:orderItemDetails.size, name:orderItemDetails.name, quantity:orderItemDetails.quantity})
                     //add new order item price to order
-                    order.totalPrice += orderItemDetails.unitPrice * orderItemDetails.quantity
+                    order.totalPrice += orderItemDetails.price * orderItemDetails.quantity
+                    //edited price
+                    editedPrice = order.totalPrice
                     //save order and order item
                     await Promise.all([order.save(), orderItem.save()])
                 } else {
                 //find order Item
-                let orderItem = await OrderItemModel.findById(orderDetails._id)
+                if(!orderItemDetails.itemId)
+                    return res.status(400).json({message: `edit action ${orderItemDetails.action} requires item id`})
+                let orderItem = await OrderItemModel.findById(orderItemDetails.itemId)
+                if (!orderItem) 
+                    return res.status(400).json({message: "no order item with such id found under order"})
                 //subtract the price of the order items from the order
                 let price = orderItem.unitPrice * orderItem.quantity
-                order.totalPrice -= price
+                editedPrice = order.totalPrice
                 //check if the condition is to delete order
                 if(orderItemDetails.action === "delete") {
                     //save order and delete OrderItemModel
-                    Promise.all([order.save(),OrderItemModel.findByIdAndDelete(orderItem._id)])
+                    let deletedOrder = await OrderItemModel.findByIdAndDelete(orderItem._id)
+                    order.totalPrice = order.totalPrice - (deletedOrder.unitPrice * deletedOrder.quantity)
+                    editedPrice = order.totalPrice
+                    Promise.all([order.save()])
                 }
                 else {
                     //update the entries
-                    orderItem.quantity = orderDetails.quantity
+                    orderItem.quantity = orderItemDetails.quantity
                     //add the changed price to order
-                    order.price += orderItem.quantity * orderItem.unitPrice
+                    order.totalPrice -= price
+                    order.totalPrice += orderItem.quantity * orderItemDetails.price
+                    //save update
+                    editedPrice = order.totalPrice
                     //save the changes
                     await Promise.all([orderItem.save(), order.save()])
+                        }
+                    }
                 }
             }
+        
+        //check for refund logic here
+        let output = {"message": 'changes saved', updatedPrice: totalPrice}
+        if(editedPrice && (editedPrice !== totalPrice)) {
+            payMent.expectedAmount = (payMent.expectedAmount - totalPrice) + editedPrice
+            let refund = false
+            let amount = 0
+            if(payMent.status !== "payed") {
+                if(totalPrice > editedPrice) {
+                    amount = totalPrice - editedPrice
+                } else {
+                    amount = editedPrice - totalPrice
+                    refund = true
+                }
+                if(refund)
+                    output.owing = -amount
+                else 
+                    output.owing = amount
+                await ExtraFundModel.deleteOne({orderId:details.orderId})            
+                let exFund = new ExtraFundModel({orderId:order._id, customerId:req.user._id, refund, amount})
+                //check if mode is online 
+                if(payMent.mode === "online") {
+                    //issue a payment receipt
+                    let amountInPeswas = amount * 100
+                //get user email
+                let userObject = {email:req.user.email, amount:amountInPeswas}
+                let response = await paymentGateWay("/transaction/initialize", userObject)
+                //check status
+                if(response.status !== 200)
+                    return res.status(501).json({"message":"server side error"})
+                output.paymentGateway = response.data.data
+                exFund.reference = response.data.data.reference
+                exFund.accessCode = response.data.data.access_code
+                exFund.urlPayment = response.data.data.authorization_url
+                }
+                await exFund.save()
+            }
+                
+
         }
-    }
-        //return response with orderId
-        return res.status(200).json({"orderId": order._id})
+        return res.status(200).json({"orderId": order._id, ...output})
     }
 
     static orderItems = async (req, res)=>{

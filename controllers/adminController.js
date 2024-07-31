@@ -131,7 +131,7 @@ class AdminController {
     /**
      * upload food into the database
      * @param {object} req: http request object 
-     * @param {object} res: http respone object
+     * @param {object} res: http response object
      */
     static editFood = async (req, res) => {
         try {
