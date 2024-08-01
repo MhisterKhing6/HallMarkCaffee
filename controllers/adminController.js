@@ -96,7 +96,6 @@ class AdminController {
                 let ext = path.extname(foodDetails.fileName)
                 //generate unique file name with food id
                 let fileName = foodDb._id.toString() + ext
-                console.log(fileName)
                 let base64 = foodDetails.url.split("base64,")[1]
                 let data = await saveUpolaodFileDisk(fileName, base64)
                 //check if image is successfully saved
@@ -260,10 +259,13 @@ class AdminController {
     return res.status(200).json(customerInfo)
 }
 static orderDetails = async (req, res) => {
-    let customerId = req.params.id
+    let email = req.params.email
+    let user = await UserModel.findOne({email})
+    if(!user)
+        return res.status(400).json({"message": "no user with email"})
     let startOfWeek = new Date(moment().clone().startOf("week").toISOString() )//get start of week
     let endOfWeek =  new Date(moment().clone().endOf("week").toISOString())
-    let orders = await OrderModel.find({$and:[{createdAt:{$lte:endOfWeek}}, {customerId},  {status: {$ne:"delivered"}}, {createdAt: {$gte:startOfWeek}}]}).lean()
+    let orders = await OrderModel.find({$and:[{createdAt:{$lte:endOfWeek}}, {customerId:user._id},  {status: {$ne:"delivered"}}, {createdAt: {$gte:startOfWeek}}]}).lean()
     let ordersWithItem = []
     for(const order of orders) {
         let orderItems = await OrderItemModel.find({orderId:order._id}).select("name quantity size price").lean()
