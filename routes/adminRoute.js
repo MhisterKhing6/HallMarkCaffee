@@ -109,6 +109,6 @@ adminRoute.post('/search/order', AdminController.searchOrder)
 /**
  * get orders
  */
-adminRoute.get("/order-items/:email", AdminController.orderDetails)
+adminRoute.get("/order-items/:id", AdminController.orderDetails)
 
 export { adminRoute };
