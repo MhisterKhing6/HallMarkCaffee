@@ -115,7 +115,7 @@ class ClientController {
         })
         let ordersWithItem = []
         for(const order of customerOrdersWithEditStatus) {
-        let orderItems = await OrderItemModel.find({orderId:order._id}).select("_id name quantity size price").lean()
+        let orderItems = await OrderItemModel.find({orderId:order._id}).select("_id name quantity size unitPrice").lean()
         order.items = orderItems
         ordersWithItem.push(order)
     }
