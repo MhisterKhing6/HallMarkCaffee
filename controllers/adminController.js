@@ -1,13 +1,15 @@
 import moment from "moment"
 import path from "path"
+import { ActivitiesModel } from "../models/actitivities.js"
 import { FoodModel } from "../models/food.js"
 import { FoodCatModel } from "../models/foodCategories.js"
+import { OrderItemModel } from "../models/orderItem.js"
 import { OrderModel } from "../models/orders.js"
+import { OrderPaymentModel } from "../models/payment.js"
 import { UserModel } from "../models/user.js"
+import { sendStatusInformation } from "../utils/EmailHandler.js"
 import { generateFileUrl, saveUpolaodFileDisk } from "../utils/FileHandler.js"
 import { erroReport } from "../utils/errors.js"
-import { sendStatusInformation } from "../utils/EmailHandler.js"
-import { OrderItemModel } from "../models/orderItem.js"
 
 
 /** Handle admin funtions*/
@@ -252,9 +254,18 @@ class AdminController {
     let endOfWeek =  new Date(moment().clone().endOf("week").toISOString())
     let customers = await OrderModel.distinct("customerId",{$and:[{createdAt:{$lte:endOfWeek}},  {status: {$ne:"delivered"}}, {createdAt: {$gte:startOfWeek}}]})
     const customerInfo = []
+    //get the total amount
     for (const customer of customers) {
         let cus = await UserModel.findById(customer)
-        customerInfo.push({"email": cus.email,"name": cus.name, "id":cus.id})
+        let customers = await OrderModel.find({$and:[{customerId:cus}, {createdAt:{$lte:endOfWeek}},  {status: {$ne:"delivered"}}, {createdAt: {$gte:startOfWeek}}]}).lean()
+        //add all the marks
+        let price = 0
+        let date = null
+        for (const cs of customers) {
+            price += cs.totalPrice
+            date = cs.createdAt
+        }
+        customerInfo.push({"email": cus.email,"name": cus.name, "id":cus.id, price, date })
     }
     return res.status(200).json(customerInfo)
 }
@@ -355,7 +366,71 @@ static orderDetails = async (req, res) => {
     }
     return res.status(200).json(order)
  }
-}
+
+ static recentActivities = async (req, res) => {
+    let activityItems = await ActivitiesModel.find().sort({"date": -1}).lean()
+    return res.status(200).json(activityItems)
+    }
+
+ static paymentHistory = async (req, res) => {
+    //check if there are details
+    let query = req.query
+    let filter = {}
+    if(query.name) {
+        ///"process name"
+        let userId = await UserModel.findOne({name:query.name}).select("_id")
+        if(userId) {
+            filter.customerId = userId._id
+        }
+        console.log(filter)
+
+    }
+    //get order that are payed or cancelled
+    let orders = await OrderModel.find(filter).populate({path:"paymentId", select:'status date payedAmount mode'}).sort({createdAt: -1}).lean()
+    let fOutput = []
+    for(const order of orders) {
+        let user = await UserModel.findById(order.customerId).select("name")
+        order.name = user.name
+        fOutput.push(
+            {"name": user.name, "orderId": order._id, "paymentMode": order.paymentId.mode,
+             "amount": order.totalPrice, paymentStatus:order.paymentId.status, orderStatus:order.status,
+             "orderCreatedDate": order.createdAt, "paymentDate": order.paymentId.date
+            })
+    }
+    return res.status(200).json(fOutput)
+    }
+
+
+    static cashPayments = async (req, res) => {
+        let orders = await OrderPaymentModel.find({$and:[{mode:"cash"}, {status:{$ne:'payed'}}]}).populate("customerId").lean()
+        let ordersName = []
+        for(const cash of orders) {
+            ordersName.push({status:cash.status,mode:cash.mode, paymentId:cash._id,amount:cash.expectedAmount, name:cash.customerId.name, date:cash.createdAt})
+        }
+        return res.status(200).json(ordersName)
+    }
+
+    static changePaymentStatus = async (req, res) => {
+        let paymentStatus = req.body
+        if(!(paymentStatus.paymentId && paymentStatus.status)) 
+            return res.status(200).json({message:"not all fields given"})
+        let payment = await OrderPaymentModel.findById(paymentStatus.paymentId)
+        if(!payment)
+            return res.status(400).json({"message": "wrong payment id"})
+        payment.status = paymentStatus.status
+        await payment.save()
+        return res.status(200).json({"message": "payment status changed"})
+    }
+
+    static orderDetailsHistory = async (req, res) => {
+        let orderId = req.params.orderId
+        let order = await OrderModel.findById(orderId).populate("customerId").lean()
+        let orderItems = await OrderItemModel.find({orderId}).select("name size unitPrice quantity").lean()
+        return res.status(200).json({orderId:order._id, customerName: order.customerId.name, price:order.totalPrice, items:orderItems})
+    }
+
+
+ }
 
 
 export { AdminController }

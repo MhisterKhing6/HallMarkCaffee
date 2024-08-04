@@ -1,7 +1,7 @@
 import { OrderModel } from "../models/orders.js"
 import { OrderPaymentModel } from "../models/payment.js"
 import { getPaymentInfo, paymentGateWay } from "../utils/paymentGateway.js"
-
+import { ActivitiesModel } from "../models/actitivities.js"
 class PaymentController {
 
     static startPayment = async (req, res) => {
@@ -61,6 +61,8 @@ class PaymentController {
                 return res.status(501).json({"message": "server side error"})
             if(response.data.data.status === "success" && (payment.expectedAmount*100 <= response.data.data.amount)) {
                 payment.status = "payed"
+                let activity = new ActivitiesModel({message: `${req.user.name} pays GH:${payment.expectedAmount}`, customerName:req.user.name})
+                await activity.save()
             }
             if(response.data.data.status !== "success") {
                 payment.status = response.data.data.status

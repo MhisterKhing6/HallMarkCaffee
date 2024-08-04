@@ -3,7 +3,7 @@ const OrderItemSchema = new Schema({
     unitPrice:{type: Number, required:true},
     foodId: {type:String, required:true},
     quantity: {type:Number, required: true},
-    orderId: {type:Types.ObjectId, required: true},
+    orderId: {type:Types.ObjectId, ref: "Order"},
     name: {type:String},
     size: {type:String}
 })

@@ -111,4 +111,31 @@ adminRoute.post('/search/order', AdminController.searchOrder)
  */
 adminRoute.get("/order-items/:id", AdminController.orderDetails)
 
+/**
+ * get recent activities
+ */
+adminRoute.get("/activities", AdminController.recentActivities)
+
+/**
+ * get payment history
+ */
+adminRoute.get("/payment-history",AdminController.paymentHistory )
+
+/**
+ * change payment history
+ */
+adminRoute.get("/payment-cash", AdminController.cashPayments )
+
+
+/**
+ * change payments
+ */
+adminRoute.post("/payment/status", AdminController.changePaymentStatus)
+
+/**
+ * change payments
+ * 
+ */
+adminRoute.get("/history/order/:orderId", AdminController.orderDetailsHistory)
+
 export { adminRoute };

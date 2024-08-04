@@ -1,3 +1,4 @@
+import { ActivitiesModel } from "../models/actitivities.js"
 import { UserAddressModel } from "../models/address.js"
 import { FoodModel } from "../models/food.js"
 import { OrderItemModel } from "../models/orderItem.js"
@@ -35,7 +36,7 @@ class ClientController {
         let orders = []
         let orderItems = []
         let rejected = []
-        let payment = new OrderPaymentModel({mode:orderDetail.paymentMode, expectedAmount:orderDetail.totalPrice})
+        let payment = new OrderPaymentModel({customerId:req.user._id, mode:orderDetail.paymentMode, expectedAmount:orderDetail.totalPrice})
 
         //save the information in a list
         for(const key of Object.keys(orderDetail.items)) {
@@ -78,7 +79,9 @@ class ClientController {
                 payment.urlPayment = response.data.data.authorization_url
 
             }
-        await Promise.all([payment.save(), ...orders, ...orderItems]) //save all order entries
+        let activity = new ActivitiesModel({message: `${req.user.name} placed new order`, customerName:req.user.name})
+        payment.customerId = req.user._id
+        await Promise.all([payment.save(), ...orders, ...orderItems, activity.save()]) //save all order entries
         return res.status(200).json({...output, rejected})
     }
     static order = async (req, res) => {
@@ -103,7 +106,8 @@ class ClientController {
         //make payment entry
         let paymentEntry = OrderPaymentModel({orderId:order._id, mode:orderDetails.paymentMode}).save()
         //save orders and order items
-        await Promise.all([order.save(), ...modelOrder, paymentEntry])
+        let activity = new ActivitiesModel({message: `${req.user.name} placed new order`, customerName:req.user.name})
+        await Promise.all([activity.save(), order.save(), ...modelOrder, paymentEntry])
         return res.status(200).json({"message": "orders saved"})
     }
 
@@ -247,12 +251,12 @@ class ClientController {
                                 }
                             }
                         } else {
-                            paymentNewOrder = new OrderPaymentModel({"expectedAmount":amount, mode:payMent.mode})
-                            exFund = new ExtraFundModel({orderId:order._id,customerId:req.user._id, refund, amount, paymentId:paymentNewOrder._id})
+                            paymentNewOrder = new OrderPaymentModel({customerId:req.user._id, "expectedAmount":amount, mode:payMent.mode})
+                            exFund = new ExtraFundModel({customerId:req.user._id, orderId:order._id,customerId:req.user._id, refund, amount, paymentId:paymentNewOrder._id})
                         }
                     }
                 else  {
-                    paymentNewOrder = new OrderPaymentModel({"expectedAmount":amount, mode:payMent.mode})
+                    paymentNewOrder = new OrderPaymentModel({customerId: req.user._id, "expectedAmount":amount, mode:payMent.mode})
                     exFund = new ExtraFundModel({orderId:order._id,customerId:req.user._id, refund, amount, paymentId:paymentNewOrder._id})
                 }
                 //check if mode is online 
@@ -279,6 +283,8 @@ class ClientController {
             payMent.expectedAmount = (payMent.expectedAmount - totalPrice) + editedPrice
             await payMent.save()
         }
+        let activity = new ActivitiesModel({message: `${req.user.name} edited ${order.day} order`, customerName:req.user.name})
+        await activity.save()
         return res.status(200).json({"orderId": order._id, ...output})
     }
 
