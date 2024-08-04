@@ -28,12 +28,13 @@ class ClientController {
 
     static accumulateOrder = async (req, res) => {
         let orderDetail = req.body
-        if(!(orderDetail.paymentMode && orderDetail.totalPrice && orderDetail.items)) {
-            res.status(400).json({"message": "not all fields given"})
+        if(!(orderDetail.paymentMode && orderDetail.totalPrice && orderDetail.items && orderDetail.timePayment)) {
+            return res.status(400).json({"message": "not all fields given"})
         }
 
         let orders = []
         let orderItems = []
+        let rejected = []
         let payment = new OrderPaymentModel({mode:orderDetail.paymentMode, expectedAmount:orderDetail.totalPrice})
 
         //save the information in a list
@@ -42,6 +43,12 @@ class ClientController {
                 let day = orderDetail.items[key]
                 //form order model
                 if(day.items.length !== 0) { //check if day has value
+                    //check if there is order of the same endpoint
+                    let savedOrder = await OrderModel.findOne({$and:[{day:key}, {status:{$nin:["delivered", "cancelled"]}}]})
+                    if(savedOrder) {
+                        rejected.push(key)
+                        continue
+                    }
                     let orderSingle = new OrderModel({paymentId:payment._id,customerId:req.user._id, day:key, expectedDate:day.date })
                     for(const food of day.items) {
                         let orderItem = new OrderItemModel({foodId:food._id.toString(), orderId:orderSingle._id, unitPrice:food.price, size:food.size, name:food.name, quantity:food.quantity})
@@ -53,6 +60,8 @@ class ClientController {
             }
         }
         let output = {message:"success"}
+        if(orderItems.length === 0) 
+            return res.status(400).json({"message": "you already have pending orders for such days, please edit the order if you want to add new items, at the orders page"})
             //check if payment is online
             if(orderDetail.paymentMode === "online") {
                 //initiate payment to paystack
@@ -63,13 +72,14 @@ class ClientController {
                 //check status
                 if(response.status !== 200)
                     return res.status(501).json({"message":"server side error"})
-                output = response.data.data
+                output.paymentGateWay = orderDetail.timePayment === "now" ? response.data.data : ""
                 payment.reference = response.data.data.reference
                 payment.accessCode = response.data.data.access_code
                 payment.urlPayment = response.data.data.authorization_url
+
             }
         await Promise.all([payment.save(), ...orders, ...orderItems]) //save all order entries
-        return res.status(200).json(output)
+        return res.status(200).json({...output, rejected})
     }
     static order = async (req, res) => {
         //order items {day:day, paymentMode:cash:online orderItems:[{foodId:quantity, price}, {foodId:quantity, price}]}
@@ -191,41 +201,83 @@ class ClientController {
         //check for refund logic here
         let output = {"message": 'changes saved', updatedPrice: totalPrice}
         if(editedPrice && (editedPrice !== totalPrice)) {
-            payMent.expectedAmount = (payMent.expectedAmount - totalPrice) + editedPrice
             let refund = false
             let amount = 0
             if(payMent.status !== "payed") {
                 if(totalPrice > editedPrice) {
                     amount = totalPrice - editedPrice
+                    refund = true
                 } else {
                     amount = editedPrice - totalPrice
-                    refund = true
                 }
-                if(refund)
-                    output.owing = -amount
-                else 
-                    output.owing = amount
-                await ExtraFundModel.deleteOne({orderId:details.orderId})            
-                let exFund = new ExtraFundModel({orderId:order._id, customerId:req.user._id, refund, amount})
+                
+                let exFund =  await ExtraFundModel.findOne({orderId:details.orderId})
+                let paymentNewOrder = null
+                if(exFund) {
+                        paymentNewOrder = await OrderPaymentModel.findById(exFund.paymentId)
+                        //adjust changes accordingly
+                        if(paymentNewOrder.status !== "payed") {
+                            //check if the fun the user have is refund
+                            if(exFund.refund) {
+                                //check if the new changes makes him to pay more or not
+                                if(refund) {
+                                    paymentNewOrder.expectedAmount += amount
+                                } else {
+                                    //check if the amount to refun the user is greater than the credit amount
+                                    if(paymentNewOrder.expectedAmount > amount) {
+                                        paymentNewOrder.expectedAmount = paymentNewOrder.expectedAmount - amount
+                                    } else {
+                                        paymentNewOrder.expectedAmount = amount - paymentNewOrder.expectedAmount
+                                        exFund.refund = false
+                                        refund = false
+                                    }
+                                }
+                            } else {
+                                if(!refund) {
+                                    paymentNewOrder.expectedAmount += amount
+                                } else {
+                                    //check if the amount to refun the user is greater than the credit amount
+                                    if(paymentNewOrder.expectedAmount > amount) {
+                                        paymentNewOrder.expectedAmount = paymentNewOrder.expectedAmount - amount
+                                    } else {
+                                        paymentNewOrder.expectedAmount = amount - paymentNewOrder.expectedAmount
+                                        exFund.refund = true
+                                        refund = true
+                                    }
+                                }
+                            }
+                        } else {
+                            paymentNewOrder = new OrderPaymentModel({"expectedAmount":amount, mode:payMent.mode})
+                            exFund = new ExtraFundModel({orderId:order._id,customerId:req.user._id, refund, amount, paymentId:paymentNewOrder._id})
+                        }
+                    }
+                else  {
+                    paymentNewOrder = new OrderPaymentModel({"expectedAmount":amount, mode:payMent.mode})
+                    exFund = new ExtraFundModel({orderId:order._id,customerId:req.user._id, refund, amount, paymentId:paymentNewOrder._id})
+                }
                 //check if mode is online 
                 if(payMent.mode === "online") {
                     //issue a payment receipt
-                    let amountInPeswas = amount * 100
+                let amountInPeswas = paymentNewOrder.expectedAmount * 100
                 //get user email
                 let userObject = {email:req.user.email, amount:amountInPeswas}
                 let response = await paymentGateWay("/transaction/initialize", userObject)
                 //check status
                 if(response.status !== 200)
                     return res.status(501).json({"message":"server side error"})
-                output.paymentGateway = response.data.data
-                exFund.reference = response.data.data.reference
-                exFund.accessCode = response.data.data.access_code
-                exFund.urlPayment = response.data.data.authorization_url
+                output.paymentGateway = exFund.refund ? "" : response.data.data
+                paymentNewOrder.reference  =     response.data.data.reference
+                paymentNewOrder.accessCode =     response.data.data.access_code
+                paymentNewOrder.urlPayment =     response.data.data.authorization_url
                 }
-                await exFund.save()
+                exFund.amount = paymentNewOrder.expectedAmount
+                exFund.date = new Date()
+                output.owing = exFund.refund ? -exFund.amount : exFund.amount
+                Promise.all([exFund.save(), paymentNewOrder.save()])
             }
-                
-
+        } else {
+            payMent.expectedAmount = (payMent.expectedAmount - totalPrice) + editedPrice
+            await payMent.save()
         }
         return res.status(200).json({"orderId": order._id, ...output})
     }

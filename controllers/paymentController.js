@@ -46,7 +46,7 @@ class PaymentController {
         //get order
         let payment = await OrderPaymentModel.findOne({reference})
         if(!payment) {
-            return res.status(400).json({"message": "wrong order id"})
+            return res.status(400).json({"message": "wrong reference number id"})
         }
         //check to see if transaction has refrence
         let status = null;
