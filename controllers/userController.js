@@ -9,7 +9,7 @@ import { sendEmailVerification, sendResetPassword } from "../utils/EmailHandler.
 import { generateToken } from "../utils/WebTokenController.js"
 import { erroReport } from "../utils/errors.js"
 import { generateSecretNumber, TwoHourPass } from "../utils/VerificationFunctions.js"
-
+import { VerifTokenModel } from "../models/verifyToken.js"
 class UserController  {
 
     static registerUser = async (req, res) => {
