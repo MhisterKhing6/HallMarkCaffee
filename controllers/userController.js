@@ -149,7 +149,7 @@ class UserController  {
           return res.status(400).json({"message": "fields missing"})
      try {
          //check for verification entry
-         let verificationEntry = await VerifTokenModel.findOne({_id: new ObjectId(verficationDetails.verificationId)})
+         let verificationEntry = await VerifTokenModel.findById(verficationDetails.verificationId)
          if (!verificationEntry)
              return res.status(401).json({"message": "no verification entry found"})
          //check if token has expired
@@ -187,14 +187,14 @@ class UserController  {
     //check for verifcation database entry
     try {
         //check for verification entry
-        let verificationEntry = await VerifTokenModel.findOne({_id:new ObjectId(updateDetials.verificationId)})
+        let verificationEntry = await VerifTokenModel.findById(updateDetials.verificationId)
         if(!verificationEntry)
             return res.status(401).json({"message": "no verification entry found"})
         //check if user has verify and the type of verification is reset password
         if(!(verificationEntry.verified))
             return res.status(401).json({"message": "user not verfied"})
         //get and verify user
-        let user = await UserModel.findOne({_id: new ObjectId(verificationEntry.userId)})
+        let user = await UserModel.findById(verificationEntry.userId)
         if(!user)
             return await  res.status(401).json({"message": "user not registered"})
         //update user's password
