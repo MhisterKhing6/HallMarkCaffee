@@ -8,6 +8,7 @@ import { UserModel } from "../models/user.js"
 import { sendEmailVerification, sendResetPassword } from "../utils/EmailHandler.js"
 import { generateToken } from "../utils/WebTokenController.js"
 import { erroReport } from "../utils/errors.js"
+import { generateSecretNumber, TwoHourPass } from "../utils/VerificationFunctions.js"
 
 class UserController  {
 
@@ -190,7 +191,7 @@ class UserController  {
         if(!verificationEntry)
             return res.status(401).json({"message": "no verification entry found"})
         //check if user has verify and the type of verification is reset password
-        if(!(verificationEntry.verified && verificationEntry.type === "password"))
+        if(!(verificationEntry.verified))
             return res.status(401).json({"message": "user not verfied"})
         //get and verify user
         let user = await UserModel.findOne({_id: new ObjectId(verificationEntry.userId)})
