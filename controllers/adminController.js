@@ -319,7 +319,7 @@ static orderDetails = async (req, res) => {
             end = new Date(moment().endOf("year").toISOString())
         }
     //check if duration is lifetime return all order entry
-    let query =  duration === "lifetime" ? {} : {$and:[{expectedDate:{$gte:start}}, {expectedDate:{$lte:end}}, {status:"delivered"}]}
+    let query =  duration === "lifetime" ? {} : {$and:[{expectedDate:{$gte:start}}, {expectedDate:{$lte:end}}, {status:{$nin: ["delivered", "cancelled"]}}]}
    
     let dataSetOrder = await OrderModel.find(query).select("_id, totalPrice").lean()
     
