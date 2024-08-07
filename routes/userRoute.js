@@ -41,6 +41,6 @@ nonAuthRoute.post("/update/password", UserController.updatePassword)
 /**
  * register user
  */
-nonAuthRoute.post("/user", UserController.registerUser)
+nonAuthRoute.post("/register/user", UserController.registerUser)
 
 export { nonAuthRoute };
