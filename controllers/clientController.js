@@ -223,7 +223,7 @@ class ClientController {
         if(editedPrice && (editedPrice !== totalPrice)) {
             let refund = false
             let amount = 0
-            if(payMent.status !== "payed") {
+            if(payMent.status === "payed") {
                 if(totalPrice > editedPrice) {
                     amount = totalPrice - editedPrice
                     refund = true
