@@ -384,7 +384,6 @@ static orderDetails = async (req, res) => {
         if(userId) {
             filter.customerId = userId._id
         }
-        console.log(filter)
 
     }
     //get order that are payed or cancelled

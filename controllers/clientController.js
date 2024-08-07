@@ -32,6 +32,7 @@ class ClientController {
         if(!(orderDetail.paymentMode && orderDetail.totalPrice && orderDetail.items && orderDetail.timePayment)) {
             return res.status(400).json({"message": "not all fields given"})
         }
+        try {
 
         let orders = []
         let orderItems = []
@@ -83,10 +84,15 @@ class ClientController {
         payment.customerId = req.user._id
         await Promise.all([payment.save(), ...orders, ...orderItems, activity.save()]) //save all order entries
         return res.status(200).json({...output, rejected})
+        } catch(err) {
+            console.log(err)
+            return res.status(500).json({"message": "internal error"})
+        }
     }
     static order = async (req, res) => {
         //order items {day:day, paymentMode:cash:online orderItems:[{foodId:quantity, price}, {foodId:quantity, price}]}
         let orderDetails = req.body
+        try {
         //form food order
         if(!(orderDetails.paymentMode && orderDetails.totalPrice && orderDetails.items))
             return res.status(400).json({"message": "not all fields given"})
@@ -109,6 +115,10 @@ class ClientController {
         let activity = new ActivitiesModel({message: `${req.user.name} placed new order`, customerName:req.user.name})
         await Promise.all([activity.save(), order.save(), ...modelOrder, paymentEntry])
         return res.status(200).json({"message": "orders saved"})
+    }catch (err) {
+        console.log(err)
+        return res.status(500).json({message: "internal error"})
+        }
     }
 
     /**
@@ -147,6 +157,7 @@ class ClientController {
         ]
             }
         } */
+       try {
         let details = req.body
         if(!(details.orderId))
             return res.status(400).json({"message": "bad order id"})
@@ -286,6 +297,10 @@ class ClientController {
         let activity = new ActivitiesModel({message: `${req.user.name} edited ${order.day} order`, customerName:req.user.name})
         await activity.save()
         return res.status(200).json({"orderId": order._id, ...output})
+    }catch (error) {
+        console.log(error)
+        return res.status(500).json({"message": "internal error"})
+    }
     }
 
     static orderItems = async (req, res)=>{
