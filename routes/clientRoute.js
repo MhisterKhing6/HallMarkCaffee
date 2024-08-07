@@ -15,8 +15,10 @@ clientRoute.use(async(req, res, next) => {
     if(!details)
         return erroReport(res, 401, "expiredSes")
     let user = await UserModel.findById(details.id)
-    /*if(user.role !== "customer")
-        return erroReport(res, 400, "unAuth") */
+    if(!user)
+        return erroReport(res, 400, "unAuth")
+    if(user.role !== "customer")
+        return erroReport(res, 400, "unAuth")
     req.user = user
     next()
 
