@@ -172,8 +172,13 @@ class ClientController {
             for(const orderItemDetails of details.orderItems) {
                 //check the action of order
                 if(orderItemDetails.action === "add") {
-                    //form order item
-                    let orderItem = new OrderItemModel({foodId:orderItemDetails._id.toString(),orderId:order._id, unitPrice:orderItemDetails.price,size:orderItemDetails.size, name:orderItemDetails.name, quantity:orderItemDetails.quantity})
+                    let orderItem = await OrderItemModel.findOne({$and:[{foodId:orderItemDetails._id.toString()}, {orderId: details.orderId}]})
+                    if(!orderItem)
+                        orderItem = new OrderItemModel({foodId:orderItemDetails._id.toString(),orderId:order._id, unitPrice:orderItemDetails.price,size:orderItemDetails.size, name:orderItemDetails.name, quantity:orderItemDetails.quantity})
+                    else{
+                        orderItem.quantity += orderItemDetails.quantity
+                        orderItem.price = orderItemDetails.price
+                    }
                     //add new order item price to order
                     order.totalPrice += orderItemDetails.price * orderItemDetails.quantity
                     //edited price
