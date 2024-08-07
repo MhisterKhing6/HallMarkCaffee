@@ -233,14 +233,14 @@ class AdminController {
         let details  = req.body
         try {
             //check if all food details are given
-        if(details.id && details.status )
+        if(details.id)
             return erroReport(res, 400, 'allFields')
         //find food db entry
         let food = await FoodModel.findById(details.id)
         if (!food)
             return res.status(400).json({message: "food entry not found"})
         //else update food status
-        food.enabled = details.status === "enabled" ? true : false
+        food.enabled = details.status
         await food.save()
         return res.status(200).json({"message": "food status updated"})
     } catch(error) {
