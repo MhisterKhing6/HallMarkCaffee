@@ -45,7 +45,7 @@ class ClientController {
                 //form order model
                 if(day.items.length !== 0) { //check if day has value
                     //check if there is order of the same endpoint
-                    let savedOrder = await OrderModel.findOne({$and:[{day:key}, {status:{$nin:["delivered", "cancelled"]}}]})
+                    let savedOrder = await OrderModel.findOne({$and:[{day:key}, {customerId:req.user_id}, {status:{$nin:["delivered", "cancelled"]}}]})
                     if(savedOrder) {
                         rejected.push(key)
                         continue

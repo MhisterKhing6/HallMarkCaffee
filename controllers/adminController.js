@@ -331,6 +331,8 @@ static orderDetails = async (req, res) => {
     let averageSales = totalOrders === 0 ? 0 : totalSales / totalOrders
     //return response
     let response = {totalSales, averageSales, totalOrders}
+    console.log(start)
+    console.log(end)
     return res.status(200).json(response)
   }
 
