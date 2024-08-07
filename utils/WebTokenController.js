@@ -40,8 +40,6 @@ const getAuthorizationtoken = (request) => {
         let token = null
         if(request.header("Authorization"))
             token = request.header("Authorization").trim()
-        else 
-            token = request.header("authorization").trim()
         if(!token) {
             return null
         }
