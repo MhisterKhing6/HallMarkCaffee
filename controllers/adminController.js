@@ -233,7 +233,7 @@ class AdminController {
         let details  = req.body
         try {
             //check if all food details are given
-        if(details.id)
+        if(!details.id)
             return erroReport(res, 400, 'allFields')
         //find food db entry
         let food = await FoodModel.findById(details.id)
