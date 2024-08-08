@@ -139,7 +139,7 @@ class AdminController {
             let foodDetails = req.body //{category:categoryId,description:description name ,url:urlOfPic, name:nana,sizes:[{name:larg, price:300},{name:medium, price:200}]}
             let acceptedKeys = ["size","special", "day", "price",'fileName', "name", "url", "description", "categoryId"]
             //check if all food fields are given
-            if(!foodDetails.id)
+            if(foodDetails.id)
                 return erroReport(res, 400, false, "id for food is required")
             let food = await FoodModel.findById(foodDetails.id)
             //check for entry and update according
