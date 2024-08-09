@@ -240,7 +240,7 @@ class AdminController {
         if (!food)
             return res.status(400).json({message: "food entry not found"})
         //else update food status
-        food.enabled = details.status
+        food.enabled = details.status === "disabled" ? false : true
         await food.save()
         return res.status(200).json({"message": "food status updated"})
     } catch(error) {
